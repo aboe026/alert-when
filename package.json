@@ -1,33 +1,42 @@
 {
-  "name": "typescript-template",
+  "name": "alert-when",
   "version": "0.1.0",
   "author": "Adam Boe",
-  "description": "A launching point for a TypeScript repository",
+  "description": "Send alerts when a condition is met",
   "private": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/aboe026/typescript-template.git"
+    "url": "https://github.com/aboe026/alert-when.git"
   },
   "bugs": {
-    "url": "https://github.com/aboe026/typescript-template/issues"
+    "url": "https://github.com/aboe026/alert-when/issues"
   },
   "engines": {
     "node": ">=16.13.2",
     "npm": ">=8.1.2"
   },
+  "type": "module",
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc",
     "clean": "rimraf build",
+    "jenkins-job-done": "ts-node src/jenkins-job-done/jenkins-job-done.mts",
     "lint": "eslint . && prettier --check .",
-    "lint:fix": "eslint --fix . && prettier --write .",
-    "start": "ts-node src/index.ts"
+    "lint:fix": "eslint --fix . && prettier --write ."
   },
   "dependencies": {
     "dotenv": "16.0.1",
-    "envalid": "7.3.1"
+    "envalid": "7.3.1",
+    "humanize-duration": "3.27.2",
+    "node-fetch": "3.2.9",
+    "nodemailer": "6.7.7",
+    "url-join": "5.0.0"
   },
   "devDependencies": {
+    "@types/humanize-duration": "3.27.1",
+    "@types/node": "18.6.3",
+    "@types/node-fetch": "2.6.2",
+    "@types/nodemailer": "6.4.4",
     "@typescript-eslint/parser": "5.29.0",
     "@typescript-eslint/eslint-plugin": "5.29.0",
     "eslint": "8.18.0",

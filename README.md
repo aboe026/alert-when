@@ -1,6 +1,6 @@
-# typescript-template
+# alert-when
 
-A launching point for a TypeScript repository
+Send alerts when a condition is met
 
 ## Requirements
 
