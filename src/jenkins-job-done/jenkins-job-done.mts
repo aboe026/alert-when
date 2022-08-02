@@ -16,10 +16,11 @@ import SMTPTransport from 'nodemailer/lib/smtp-transport.js'
       env.JENKINS_BUILD === 'latest' ? await getLatestJobNumber(env.JENKINS_JOB) : env.JENKINS_BUILD
     console.log(`Jenkins Build: "${buildNumber}"`)
     const buildUrl = urlJoin(env.JENKINS_URL, 'job', env.JENKINS_JOB.split('/').join('/job/'), buildNumber)
+    const buildApiUrl = urlJoin(buildUrl, 'api/json')
     let inProgress = true
     const start = Date.now()
     while (inProgress) {
-      inProgress = await isBuildInProgress(urlJoin(buildUrl, 'api/json'))
+      inProgress = await isBuildInProgress(buildApiUrl)
       if (inProgress) {
         console.log(
           `Jenkins build still in progress after "${prettyDuration(Date.now() - start)}", waiting "${
@@ -29,8 +30,13 @@ import SMTPTransport from 'nodemailer/lib/smtp-transport.js'
         await sleep(env.POLL_INTERVAL)
       }
     }
-    console.log(`Build completed after "${prettyDuration(Date.now() - start)}", sending email to "${env.EMAIL_TO}"`)
-    await sendEmail(buildUrl, buildNumber)
+    const result = await getBuildResult(buildApiUrl)
+    console.log(
+      `Build completed with result "${result}" after "${prettyDuration(Date.now() - start)}", sending email to "${
+        env.EMAIL_TO
+      }"`
+    )
+    await sendEmail(buildUrl, buildNumber, result)
   } catch (err: unknown) {
     console.error(err)
     process.exit(1)
@@ -76,6 +82,22 @@ async function isBuildInProgress(buildUrl: string): Promise<boolean> {
   return jobJson.inProgress
 }
 
+async function getBuildResult(buildUrl: string): Promise<BUILD_RESULT> {
+  const response = await fetch(buildUrl, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${env.JENKINS_USERNAME}:${env.JENKINS_TOKEN}`).toString('base64')}`,
+    },
+  })
+  const jobString = await response.text()
+  let jobJson
+  try {
+    jobJson = JSON.parse(jobString)
+  } catch (err: unknown) {
+    throw Error(`Cannot parse build response "${jobString}" as JSON: "${err}"`)
+  }
+  return jobJson.result as BUILD_RESULT
+}
+
 function prettyDuration(durationMs: number): string {
   const shortEnglishHumanizer = humanizeDuration.humanizer({
     language: 'shortEn',
@@ -100,7 +122,7 @@ function prettyDuration(durationMs: number): string {
   })
 }
 
-async function sendEmail(buildUrl: string, buildNumber: string) {
+async function sendEmail(buildUrl: string, buildNumber: string, result: BUILD_RESULT) {
   const options: SMTPTransport.Options = {
     host: env.EMAIL_HOST,
     port: env.EMAIL_PORT,
@@ -126,7 +148,15 @@ async function sendEmail(buildUrl: string, buildNumber: string) {
     from: env.EMAIL_FROM,
     to: env.EMAIL_TO,
     subject: `Job ${env.JENKINS_JOB} Build ${buildNumber} Completed`,
-    text: `The jenkins build ${buildUrl} has completed.`,
+    text: `The jenkins build ${buildUrl} has completed with result ${result}.`,
   })
   console.log(`Email response: "${info.response}"`)
+}
+
+enum BUILD_RESULT {
+  ABORTED,
+  SUCCESS,
+  FAILURE,
+  NOT_BUILT,
+  UNSTABLE,
 }
